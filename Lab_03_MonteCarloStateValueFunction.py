@@ -84,17 +84,31 @@ class SimpleGridWorld(object):
             res += "\n"
         return res
 
+    def next_state(self, state: Point, action: Direction) -> Point:
+        """Compute the next state given a current state and action."""
 
-"""s = SimpleGridWorld(debug=True)
-print("☝ This shows a simple visualisation of the environment state.\n")
-s.step(Direction.SOUTH)
-print(s.step(Direction.SOUTH), "⬅ This displays the state and reward from the environment 𝐀𝐅𝐓𝐄𝐑 moving.\n")
-s.step(Direction.SOUTH)
-s.step(Direction.SOUTH)
-s.step(Direction.EAST)
-s.step(Direction.EAST)
-s.step(Direction.EAST)
-s.step(Direction.EAST)"""
+        if action == Direction.NORTH:
+            new_pos = Point(state.x, state.y + 1)
+        elif action == Direction.EAST:
+            new_pos = Point(state.x + 1, state.y)
+        elif action == Direction.SOUTH:
+            new_pos = Point(state.x, state.y - 1)
+        elif action == Direction.WEST:
+            new_pos = Point(state.x - 1, state.y)
+        else:
+            raise ValueError("Invalid action")
+
+        # Check if out of bounds and adjust the position if needed
+        if new_pos.x >= self.width:
+            new_pos = Point(self.width - 1, new_pos.y)
+        if new_pos.y >= self.height:
+            new_pos = Point(new_pos.x, self.height - 1)
+        if new_pos.x < 0:
+            new_pos = Point(0, new_pos.y)
+        if new_pos.y < 0:
+            new_pos = Point(new_pos.x, 0)
+
+        return new_pos
 
 
 class MonteCarloGeneration(object):
@@ -117,34 +131,39 @@ class MonteCarloGeneration(object):
     ```
     ```"""
 
-    def __init__(self, env: SimpleGridWorld, max_steps: int = 1000, debug: bool = False):
+    def __init__(self, env: SimpleGridWorld, agent=None, epsilon=0.1, max_steps: int = 1000, debug: bool = False):
         self.env = env
+        self.agent = agent  # The agent object that interacts with the environment
+        self.epsilon = epsilon  # for epsilon-greedy policy
         self.max_steps = max_steps
         self.debug = debug
 
+    def set_agent(self, agent):
+        self.agent = agent
+
     def run(self) -> List:
         buffer = []
-        n_steps = 0  # Keep track of the number of steps so I can bail out if it takes too long
-        state, _, _ = self.env.reset()  # Reset environment back to start
+        n_steps = 0
+        state, _, _ = self.env.reset()
         terminal = False
-        while not terminal:  # Run until terminal state
-            action = random.choice(self.env.action_space)  # Random action. Try replacing this with Direction.EAST
-            next_state, reward, terminal = self.env.step(action)  # Take action in environment
-            buffer.append((state, action, reward))  # Store the result
-            state = next_state  # Ready for the next step
+        while not terminal:
+            if random.random() < self.epsilon:  # exploration / exploitation tradeoff, sometimes explore, sometimes exploit
+                action = random.choice(self.env.action_space)
+            else:  # here is exploitation
+                # Instead of random, choose best action based on next state's value
+                values = [self.agent.action_value(self.env.next_state(state, a), a) for a in self.env.action_space]
+                best_action_idx = argmax(values)
+                action = self.env.action_space[best_action_idx]
+
+            next_state, reward, terminal = self.env.step(action)
+            buffer.append((state, action, reward))
+            state = next_state
             n_steps += 1
             if n_steps >= self.max_steps:
                 if self.debug:
                     print("Terminated early due to large number of steps")
-                terminal = True  # Bail out if we've been working for too long
+                terminal = True
         return buffer
-
-
-"""env = SimpleGridWorld(debug=True)  # Instantiate the environment
-generator = MonteCarloGeneration(env=env, max_steps=20, debug=True)  # Instantiate the generation
-trajectory = generator.run()  # Generate a trajectory
-print([t[1].value for t in trajectory])  # Print chosen actions
-print(f"total reward: {sum([t[2] for t in trajectory])}")  # Print final reward"""
 
 
 class MonteCarloExperiment(object):
@@ -245,31 +264,20 @@ def next_best_value_2d(env, agent):
     return res
 
 
-"""env = SimpleGridWorld(debug=False)  # Instantiate the environment - set the debug to true to see the actual movement of the agent.
-generator = MonteCarloGeneration(env=env, debug=True)  # Instantiate the trajectory generator
-agent = MonteCarloExperiment(generator=generator)
-for i in range(4):
-    agent.run_episode()
-    # print the value of each action for the state (3,0)
-    #print(f"Run {i}: ", [agent.action_value(Point(3, 0), d) for d in env.action_space])
-print(state_value_2d(env, agent))"""
 
-"""env = SimpleGridWorld()  # Instantiate the environment
-generator = MonteCarloGeneration(env=env)  # Instantiate the trajectory generator
-agent = MonteCarloExperiment(generator=generator)
-for i in range(1000):
-    clear_output(wait=True)
-    agent.run_episode()
-    print(f"Iteration: {i}")
-    print([agent.action_value(Point(0,4), d) for d in env.action_space]) # Uncomment this line to see the actual values for a particular state
-    print(state_value_2d(env, agent), flush=True)
-    #time.sleep(0.1) # Uncomment this line if you want to see every episode
-print(next_best_value_2d(env, agent))"""
-
-
+epsilon = 1  # How often to explore (take a random action)
 env = SimpleGridWorld()  # Instantiate the environment
-generator = MonteCarloGeneration(env=env)  # Instantiate the trajectory generator
+
+# Instantiate the trajectory generator with the environment and epsilon (without the agent for now)
+generator = MonteCarloGeneration(env=env, epsilon=epsilon)
+
+# Instantiate the agent with the generator
 agent = MonteCarloExperiment(generator=generator)
+
+# Now, set the agent in the generator
+generator.set_agent(agent)
+
+
 for i in range(4000):
     clear_output(wait=True)
     agent.run_episode()

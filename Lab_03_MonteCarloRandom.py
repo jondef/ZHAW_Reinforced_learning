@@ -85,17 +85,6 @@ class SimpleGridWorld(object):
         return res
 
 
-"""s = SimpleGridWorld(debug=True)
-print("☝ This shows a simple visualisation of the environment state.\n")
-s.step(Direction.SOUTH)
-print(s.step(Direction.SOUTH), "⬅ This displays the state and reward from the environment 𝐀𝐅𝐓𝐄𝐑 moving.\n")
-s.step(Direction.SOUTH)
-s.step(Direction.SOUTH)
-s.step(Direction.EAST)
-s.step(Direction.EAST)
-s.step(Direction.EAST)
-s.step(Direction.EAST)"""
-
 
 class MonteCarloGeneration(object):
     """
@@ -139,12 +128,6 @@ class MonteCarloGeneration(object):
                 terminal = True  # Bail out if we've been working for too long
         return buffer
 
-
-"""env = SimpleGridWorld(debug=True)  # Instantiate the environment
-generator = MonteCarloGeneration(env=env, max_steps=20, debug=True)  # Instantiate the generation
-trajectory = generator.run()  # Generate a trajectory
-print([t[1].value for t in trajectory])  # Print chosen actions
-print(f"total reward: {sum([t[2] for t in trajectory])}")  # Print final reward"""
 
 
 class MonteCarloExperiment(object):
@@ -244,27 +227,6 @@ def next_best_value_2d(env, agent):
         res += "\n"
     return res
 
-
-"""env = SimpleGridWorld(debug=False)  # Instantiate the environment - set the debug to true to see the actual movement of the agent.
-generator = MonteCarloGeneration(env=env, debug=True)  # Instantiate the trajectory generator
-agent = MonteCarloExperiment(generator=generator)
-for i in range(4):
-    agent.run_episode()
-    # print the value of each action for the state (3,0)
-    #print(f"Run {i}: ", [agent.action_value(Point(3, 0), d) for d in env.action_space])
-print(state_value_2d(env, agent))"""
-
-"""env = SimpleGridWorld()  # Instantiate the environment
-generator = MonteCarloGeneration(env=env)  # Instantiate the trajectory generator
-agent = MonteCarloExperiment(generator=generator)
-for i in range(1000):
-    clear_output(wait=True)
-    agent.run_episode()
-    print(f"Iteration: {i}")
-    print([agent.action_value(Point(0,4), d) for d in env.action_space]) # Uncomment this line to see the actual values for a particular state
-    print(state_value_2d(env, agent), flush=True)
-    #time.sleep(0.1) # Uncomment this line if you want to see every episode
-print(next_best_value_2d(env, agent))"""
 
 
 env = SimpleGridWorld()  # Instantiate the environment
