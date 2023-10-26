@@ -7,6 +7,11 @@ import time
 
 Point = namedtuple('Point', ['x', 'y'])
 
+"""
+Modify the agent to hold state values instead of state-action values.
+Use ε-Greedy to select actions based on state values (or a proxy using action values if you don't have a transition model).
+At the end of each episode, calculate returns for states and update the state values.
+"""
 
 class Direction(Enum):
     NORTH = "⬆"
@@ -207,6 +212,10 @@ class MonteCarloExperiment(object):
     def run_episode(self) -> None:
         trajectory = self.generator.run()  # Generate a trajectory
         episode_reward = 0
+        """
+        accumulate rewards from the current step until the end of the episode for
+        each state-action pair, and then add that accumulated reward.
+        """
         for i, t in enumerate(reversed(trajectory)):  # Starting from the terminal state
             state, action, reward = t
             key = self._to_key(state, action)
