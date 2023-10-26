@@ -68,7 +68,7 @@ class MonteCarloGeneration(object):
         return buffer
 
 
-class MonteCarloExperiment(object):
+class MonteCarloStateValueAgent(object):
     """
     This class represents a Monte Carlo Experiment.
 
@@ -128,7 +128,7 @@ env = SimpleGridWorld()  # Instantiate the environment
 generator = MonteCarloGeneration(env=env, epsilon=epsilon)
 
 # Instantiate the agent with the generator
-agent = MonteCarloExperiment(generator=generator)
+agent = MonteCarloStateValueAgent(generator=generator)
 
 # Now, set the agent in the generator
 generator.set_agent(agent)

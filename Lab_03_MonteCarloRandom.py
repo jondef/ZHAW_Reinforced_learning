@@ -50,7 +50,7 @@ class MonteCarloGeneration(object):
         return buffer
 
 
-class MonteCarloExperiment(object):
+class MonteCarloRandomAgent(object):
     """
     This class represents a Monte Carlo Experiment.
 
@@ -101,7 +101,7 @@ class MonteCarloExperiment(object):
 
 env = SimpleGridWorld()  # Instantiate the environment
 generator = MonteCarloGeneration(env=env)  # Instantiate the trajectory generator
-agent = MonteCarloExperiment(generator=generator)
+agent = MonteCarloRandomAgent(generator=generator)
 for i in range(4000):
     clear_output(wait=True)
     agent.run_episode()

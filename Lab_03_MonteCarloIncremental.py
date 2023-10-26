@@ -37,6 +37,11 @@ class MonteCarloGeneration(object):
     def set_agent(self, agent):
         self.agent = agent
 
+    def best_action(self, state):
+        values = [self.agent.action_value(self.env.next_state(state, a), a) for a in self.env.action_space]
+        best_action_idx = argmax(values)
+        return env.action_space[best_action_idx]
+
     def run(self) -> List:
         """
         To implement the Incremental Monte Carlo:
@@ -59,9 +64,7 @@ class MonteCarloGeneration(object):
             if random.random() < self.epsilon:  # exploration
                 action = random.choice(self.env.action_space)
             else:  # exploitation
-                values = [self.agent.action_value(self.env.next_state(state, a), a) for a in self.env.action_space]
-                best_action_idx = argmax(values)
-                action = self.env.action_space[best_action_idx]
+                action = self.best_action(state)
 
             # Take a step in the environment
             next_state, reward, terminal = self.env.step(action)
@@ -82,7 +85,7 @@ class MonteCarloGeneration(object):
         return buffer
 
 
-class MonteCarloExperiment(object):
+class MonteCarloIncrementalAgent(object):
     """
     This class represents a Monte Carlo Experiment.
 
@@ -133,7 +136,7 @@ env = SimpleGridWorld()  # Instantiate the environment
 generator = MonteCarloGeneration(env=env, epsilon=epsilon)
 
 # Instantiate the agent with the generator
-agent = MonteCarloExperiment(generator=generator, gamma=gamma)
+agent = MonteCarloIncrementalAgent(generator=generator, gamma=gamma)
 
 # Now, set the agent in the generator
 generator.set_agent(agent)

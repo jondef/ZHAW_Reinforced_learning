@@ -26,11 +26,11 @@ class QLearningAgent(object):
     def __init__(self, alpha=0.1, gamma=0.99, action_space=None):
         self.alpha = alpha
         self.gamma = gamma
-        self.Q = defaultdict(float)  # Q-values
+        self.Q_Values = defaultdict(float)  # Q-values
         self.action_space = action_space
 
     def action_value(self, state, action):
-        return self.Q[(state, action)]
+        return self.Q_Values[(state, action)]
 
     def best_action(self, state):
         # Return the action with the maximum Q-value for the state
@@ -41,7 +41,7 @@ class QLearningAgent(object):
     def learn(self, state, action, reward, next_state):
         # Update the Q-value using the Q-learning update rule
         max_next_value = max([self.action_value(next_state, next_action) for next_action in self.action_space])
-        self.Q[(state, action)] += self.alpha * (reward + self.gamma * max_next_value - self.action_value(state, action))
+        self.Q_Values[(state, action)] += self.alpha * (reward + self.gamma * max_next_value - self.action_value(state, action))
 
 
 class QLearningGeneration(object):
