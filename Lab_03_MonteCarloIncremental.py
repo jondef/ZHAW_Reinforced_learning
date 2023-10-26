@@ -142,21 +142,41 @@ class MonteCarloGeneration(object):
         self.agent = agent
 
     def run(self) -> List:
+        """
+        To implement the Incremental Monte Carlo:
+        Start your episode and take an action.
+        After each step, calculate the estimated return from the current state.
+        Update the value of the state based on this estimated return without waiting for the episode to end.
+        Use the updated state values to guide action selection in the ongoing episode.
+        Repeat until the episode ends.
+
+        After each step within an episode, estimate the return for the current state and update its value.
+        Use the updated values to guide action selection within the ongoing episode.
+        """
+        print("Running episode...")
         buffer = []
         n_steps = 0
+        episode_reward = 0
         state, _, _ = self.env.reset()
         terminal = False
         while not terminal:
-            if random.random() < self.epsilon:  # exploration / exploitation tradeoff, sometimes explore, sometimes exploit
+            if random.random() < self.epsilon:  # exploration
                 action = random.choice(self.env.action_space)
-            else:  # here is exploitation
-                # Instead of random, choose best action based on next state's value
+            else:  #  exploitation
                 values = [self.agent.action_value(self.env.next_state(state, a), a) for a in self.env.action_space]
                 best_action_idx = argmax(values)
                 action = self.env.action_space[best_action_idx]
 
+            # Take a step in the environment
             next_state, reward, terminal = self.env.step(action)
             buffer.append((state, action, reward))
+
+            # ???????????
+            key = self.agent._to_key(state, action)
+            episode_reward += reward  # Add the reward to the buffer
+            self.agent.values[key] += episode_reward  # And add this to the value of this action
+            self.agent.counts[key] += 1  # Increment counter
+
             state = next_state
             n_steps += 1
             if n_steps >= self.max_steps:
@@ -181,10 +201,11 @@ class MonteCarloExperiment(object):
         run_episode(): Runs a single episode of the experiment.
     """
 
-    def __init__(self, generator: MonteCarloGeneration):
+    def __init__(self, generator: MonteCarloGeneration, gamma: float = 0.9):
         self.generator = generator
         self.values = defaultdict(float)
         self.counts = defaultdict(float)
+        self.gamma = gamma
 
     def _to_key(self, state, action):
         return (state, action)
@@ -205,14 +226,7 @@ class MonteCarloExperiment(object):
             return 0.0
 
     def run_episode(self) -> None:
-        trajectory = self.generator.run()  # Generate a trajectory
-        episode_reward = 0
-        for i, t in enumerate(reversed(trajectory)):  # Starting from the terminal state
-            state, action, reward = t
-            key = self._to_key(state, action)
-            episode_reward += reward  # Add the reward to the buffer
-            self.values[key] += episode_reward  # And add this to the value of this action
-            self.counts[key] += 1  # Increment counter
+        trajectory = self.generator.run()  # Generate a trajectory using Monte Carlo method
 
 
 def state_value_2d(env: SimpleGridWorld, agent: MonteCarloExperiment):
@@ -266,13 +280,14 @@ def next_best_value_2d(env, agent):
 
 
 epsilon = 1  # How often to explore (take a random action)
+gamma = 0.9  # Discount factor
 env = SimpleGridWorld()  # Instantiate the environment
 
 # Instantiate the trajectory generator with the environment and epsilon (without the agent for now)
 generator = MonteCarloGeneration(env=env, epsilon=epsilon)
 
 # Instantiate the agent with the generator
-agent = MonteCarloExperiment(generator=generator)
+agent = MonteCarloExperiment(generator=generator, gamma=gamma)
 
 # Now, set the agent in the generator
 generator.set_agent(agent)
