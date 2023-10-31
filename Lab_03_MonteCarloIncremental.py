@@ -40,7 +40,7 @@ class MonteCarloGeneration(object):
     def best_action(self, state):
         values = [self.agent.action_value(self.env.next_state(state, a), a) for a in self.env.action_space]
         best_action_idx = argmax(values)
-        return env.action_space[best_action_idx]
+        return self.env.action_space[best_action_idx]
 
     def run(self) -> List:
         """
@@ -101,11 +101,10 @@ class MonteCarloIncrementalAgent(object):
         run_episode(): Runs a single episode of the experiment.
     """
 
-    def __init__(self, generator: MonteCarloGeneration, gamma: float = 0.9):
+    def __init__(self, generator: MonteCarloGeneration):
         self.generator = generator
         self.values = defaultdict(float)
         self.counts = defaultdict(float)
-        self.gamma = gamma
 
     def _to_key(self, state, action):
         return (state, action)
@@ -130,19 +129,18 @@ class MonteCarloIncrementalAgent(object):
 
 
 epsilon = 1  # How often to explore (take a random action)
-gamma = 0.9  # Discount factor
 env = SimpleGridWorld()  # Instantiate the environment
 
 # Instantiate the trajectory generator with the environment and epsilon (without the agent for now)
 generator = MonteCarloGeneration(env=env, epsilon=epsilon)
 
 # Instantiate the agent with the generator
-agent = MonteCarloIncrementalAgent(generator=generator, gamma=gamma)
+agent = MonteCarloIncrementalAgent(generator=generator)
 
 # Now, set the agent in the generator
 generator.set_agent(agent)
 
-for i in range(4000):
+for i in range(1000):
     clear_output(wait=True)
     agent.run_episode()
     print(f"Iteration: {i}")
