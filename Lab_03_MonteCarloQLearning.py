@@ -26,7 +26,7 @@ class QLearningAgent(object):
     def __init__(self, alpha=0.1, gamma=0.99, action_space=None):
         self.alpha = alpha
         self.gamma = gamma
-        self.Q_Values = defaultdict(float)  # Q-values
+        self.Q_Values = defaultdict(float)
         self.action_space = action_space
 
     def action_value(self, state, action):
@@ -39,16 +39,18 @@ class QLearningAgent(object):
         return self.action_space[best_idx]
 
     def learn(self, state, action, reward, next_state):
-        # Update the Q-value using the Q-learning update rule
+        # Update the Q-value using the Q-learning update rule above
         max_next_value = max([self.action_value(next_state, next_action) for next_action in self.action_space])
         self.Q_Values[(state, action)] += self.alpha * (reward + self.gamma * max_next_value - self.action_value(state, action))
 
 
 class QLearningGeneration(object):
-    def __init__(self, env, agent, epsilon=0.1, max_steps=1000, debug=False):
+    def __init__(self, env, agent, epsilon=0.1, epsilon_decay=0.01, epsilon_min=0.99, max_steps=1000, debug=False):
         self.env = env
         self.agent = agent
         self.epsilon = epsilon
+        self.epsilon_min = epsilon_decay
+        self.epsilon_decay = epsilon_min
         self.max_steps = max_steps
         self.debug = debug
 
@@ -77,14 +79,19 @@ class QLearningGeneration(object):
                     print("Terminated early due to large number of steps")
                 terminal = True
 
+            # Epsilon decay
+            self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
-epsilon = 0.1  # How often to explore (take a random action)
+
+epsilon = 1  # How often to explore (take a random action)
+epsilon_decay = 0.9  # How much to reduce exploration
+epsilon_min = 0.1  # Minimum exploration rate
 alpha = 0.1  # Learning rate
 gamma = 0.99  # Discount factor
 
 env = SimpleGridWorld()  # Instantiate the environment
 q_agent = QLearningAgent(action_space=env.action_space, alpha=alpha, gamma=gamma)
-generator = QLearningGeneration(env, q_agent, epsilon)
+generator = QLearningGeneration(env, q_agent, epsilon, epsilon_decay, epsilon_min)
 
 for i in range(1000):
     clear_output(wait=True)
