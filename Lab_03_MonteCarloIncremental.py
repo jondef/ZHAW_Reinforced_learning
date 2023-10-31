@@ -76,6 +76,7 @@ class MonteCarloGeneration(object):
             self.agent.values[key] += episode_reward  # And add this to the value of this action
             self.agent.counts[key] += 1  # Increment counter
 
+            # Update current state
             state = next_state
             n_steps += 1
             if n_steps >= self.max_steps:

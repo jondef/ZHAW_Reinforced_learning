@@ -79,11 +79,11 @@ class QLearningGeneration(object):
 
 
 epsilon = 0.1  # How often to explore (take a random action)
+alpha = 0.1  # Learning rate
+gamma = 0.99  # Discount factor
+
 env = SimpleGridWorld()  # Instantiate the environment
-
-# Create a new agent instance
-q_agent = QLearningAgent(action_space=env.action_space)
-
+q_agent = QLearningAgent(action_space=env.action_space, alpha=alpha, gamma=gamma)
 generator = QLearningGeneration(env, q_agent, epsilon)
 
 for i in range(1000):

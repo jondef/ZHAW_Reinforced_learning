@@ -43,6 +43,11 @@ class MonteCarloGeneration(object):
     def set_agent(self, agent):
         self.agent = agent
 
+    def best_action(self, state):
+        values = [self.agent.action_value(self.env.next_state(state, a), a) for a in self.env.action_space]
+        best_action_idx = argmax(values)
+        action = self.env.action_space[best_action_idx]
+
     def run(self) -> List:
         buffer = []
         n_steps = 0
@@ -51,14 +56,13 @@ class MonteCarloGeneration(object):
         while not terminal:
             if random.random() < self.epsilon:  # exploration / exploitation tradeoff, sometimes explore, sometimes exploit
                 action = random.choice(self.env.action_space)
-            else:  # here is exploitation
-                # Instead of random, choose best action based on next state's value
-                values = [self.agent.action_value(self.env.next_state(state, a), a) for a in self.env.action_space]
-                best_action_idx = argmax(values)
-                action = self.env.action_space[best_action_idx]
+            else:  # here is exploitation # Instead of random, choose best action based on next state's value
+                action = self.best_action(state)
 
             next_state, reward, terminal = self.env.step(action)
             buffer.append((state, action, reward))
+
+            # Update current state
             state = next_state
             n_steps += 1
             if n_steps >= self.max_steps:
