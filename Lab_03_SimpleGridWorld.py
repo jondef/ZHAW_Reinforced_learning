@@ -25,7 +25,7 @@ class SimpleGridWorld(object):
 
     def reset(self):
         self.cur_pos = Point(x=0, y=(self.height - 1))
-        self.goal = Point(x=(self.width - 1), y=0)
+        self.goal = Point(x=(self.width - 1), y=1)
         # If debug, print state
         if self.debug:
             print(self)
