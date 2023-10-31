@@ -46,7 +46,7 @@ class MonteCarloGeneration(object):
     def best_action(self, state):
         values = [self.agent.action_value(self.env.next_state(state, a), a) for a in self.env.action_space]
         best_action_idx = argmax(values)
-        action = self.env.action_space[best_action_idx]
+        return self.env.action_space[best_action_idx]
 
     def run(self) -> List:
         buffer = []
