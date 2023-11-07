@@ -102,7 +102,7 @@ class MonteCarloRandomAgent(object):
 env = SimpleGridWorld()  # Instantiate the environment
 generator = MonteCarloGeneration(env=env)  # Instantiate the trajectory generator
 agent = MonteCarloRandomAgent(generator=generator)
-for i in range(4000):
+for i in range(1000):
     clear_output(wait=True)
     agent.run_episode()
     print(f"Iteration: {i}")
