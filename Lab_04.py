@@ -60,7 +60,7 @@ class CartPoleREINFORCEAgent:
 
             # Calculate the policy gradient
             probs = self.policy(state)  # probability of taking action a in state s with current policy
-            dsoftmax = softmax(state.dot(self.theta)) * (1 - softmax(state.dot(self.theta)))
+            dsoftmax = softmax(state.dot(self.theta)) * (1 - softmax(state.dot(self.theta)))  # derivative of softmax
             dlog = dsoftmax / probs  # derivative of log pi(a|s, theta)
             grad = state.reshape(-1, 1) * dlog  # gradient of log pi(a|s, theta) * G
 
@@ -71,11 +71,12 @@ class CartPoleREINFORCEAgent:
         plt.plot(episode_rewards)
         plt.xlabel("Episode")
         plt.ylabel("Total Reward")
+        plt.grid()
         plt.show()
 
 
 def load_reinforce():
-    num_episodes = 500
+    num_episodes = 2000
     learning_rate = 0.01
     gamma = 0.99
 
