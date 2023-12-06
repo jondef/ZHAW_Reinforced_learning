@@ -21,7 +21,7 @@ from stable_baselines3.common.monitor import Monitor
 from sys import exit
 
 # ref: https://xusophia.github.io/DataSciFinalProj/
-visualize = True
+visualize = False
 
 ##################################
 # UNDERSTAND THE ENVIRONMENT
@@ -47,15 +47,23 @@ print("Action Space Sample", env.action_space.sample()) # Take a random action
 env = make_vec_env('LunarLander-v2', n_envs=32)
 
 # We have studied our environment and we understood the problem: **being able to land the Lunar Lander to the Landing Pad correctly by controlling left, right and main orientation engine**. Now let's build the algorithm we're going to use to solve this Problem.
-# todo: defined DQN agent
-model = PPO("MlpPolicy", env, verbose=1)
+model = PPO("MlpPolicy", env, verbose=1,
+            learning_rate=3e-4,
+            n_steps=2048,
+            ent_coef=0.001,
+            vf_coef=0.5,
+            clip_range=0.2,
+            gamma=0.99,
+            gae_lambda=0.95,
+            batch_size=64
+            )
+
 
 ##################################
 # TRAIN THE MODEL
 ##################################
 
 # Let's train our DQN agent for 1,000,000 timesteps, don't forget to use GPU on Colab. It will take approximately ~20min, but you can use fewer timesteps if you just want to try it out.
-# todo: train it for 1.000.000 timesteps
 model.learn(total_timesteps=1_000)
 
 
@@ -66,19 +74,18 @@ model.learn(total_timesteps=1_000)
 # Create a new environment for evaluation
 eval_env = Monitor(gym.make("LunarLander-v2"))
 
-# TODO: Evaluate the model with 10 evaluation episodes
 mean_reward, std_reward = evaluate_policy(model, eval_env, n_eval_episodes=10)
 
 # Print the results
 print(f"{mean_reward:.2f} +/- {std_reward:.2f}")
 # Ideal is 200.20 +/- 20.80 after training for 1 million steps
+# An episode is considered successful if the agent scores more than 200 points.
 
 ##################################
 # VISUALIZE THE MODEL
 ##################################
 if not visualize:
     exit()
-
 
 
 def show_animation(frames):
@@ -90,7 +97,7 @@ def show_animation(frames):
         patch.set_data(frames[i])
 
     anim = animation.FuncAnimation(fig=fig, func=animate, frames=len(frames), interval=20)
-    plt.show()
+    plt.show(block=True)
     return anim  # to prevent anim object from being garbage collected
 
 
@@ -99,21 +106,21 @@ def get_frame():
     return Image.fromarray(frame)
 
 
-frames = []
-env = gym.make('LunarLander-v2', render_mode='rgb_array')
-observation = env.reset()[0]
+for _ in range(100):
+    frames = []
+    env = gym.make('LunarLander-v2', render_mode='rgb_array')
+    observation = env.reset()[0]
 
-for _ in range(1000):  # Run for 1000 steps or till the episode ends
-    frames.append(get_frame())
-    x = env.action_space.sample()  # Take a random action
-    y = model.predict(observation, deterministic=True)[0]  # Get the action predicted by the agent
-    action = x
-    observation, _, done, _, _ = env.step(action)
-    if done:
-        env.reset()  # Reset the environment if the episode ends
-        break
+    for _ in range(1000):  # Run for 1000 steps or till the episode ends
+        frames.append(get_frame())
+        y = model.predict(observation, deterministic=True)[0]  # Get the action predicted by the agent
+        action = y
+        observation, _, done, _, _ = env.step(action)
+        if done:
+            env.reset()  # Reset the environment if the episode ends
+            break
 
-env.close()
-anim = show_animation(frames)
+    env.close()
+    anim = show_animation(frames)
 
 
