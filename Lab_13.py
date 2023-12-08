@@ -78,7 +78,6 @@ mean_reward, std_reward = evaluate_policy(model, eval_env, n_eval_episodes=10)
 
 # Print the results
 print(f"{mean_reward:.2f} +/- {std_reward:.2f}")
-# Ideal is 200.20 +/- 20.80 after training for 1 million steps
 # An episode is considered successful if the agent scores more than 200 points.
 
 ##################################
