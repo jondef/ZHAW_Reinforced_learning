@@ -7,7 +7,7 @@ from tensorflow import gather_nd
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.losses import mean_squared_error
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.optimizers import RMSprop
+from tensorflow.keras.optimizers.legacy import RMSprop
 
 
 class DQN:
@@ -75,7 +75,6 @@ class DQN:
         """
         s1, s2 = y_true.shape
         print(f"y_true shape: {y_true.shape}")
-        print(f"y_pred shape: {y_pred.shape}")
 
         # this matrix defines indices of a set of entries that we want to
         # extract from y_true and y_pred
@@ -89,7 +88,6 @@ class DQN:
         y_pred_gathered = gather_nd(y_pred, indices=indices.astype(int))
 
         loss = mean_squared_error(y_true_gathered, y_pred_gathered)
-        print(loss)
         return loss
 
     def createNetwork(self):
@@ -112,16 +110,21 @@ class DQN:
             print("Simulating episode {}".format(indexEpisode))
 
             # reset the environment at the beginning of every episode
-            currentState = self.env.reset()[0]  # fixme: for vectorized envs > 1 returns S of all envs
+            currentState: list = self.env.reset()  # fixme: for vectorized envs > 1 returns S of all envs
 
             # here we step from one state to another
             # this will loop until a terminal state is reached
             terminalState = False
             while not terminalState:
 
-                # select an action on the basis of the current state, denoted by currentState
-                # fixme: here action should be an array for vectorized envs
-                action = self.predict(currentState, indexEpisode)
+                if indexEpisode < 1 or np.random.random() < self.epsilon:
+                    action = np.random.choice(self.actionDimension)
+                else:  # greedy action
+                    # fixme: here action should be an array for vectorized envs
+                    action, _ = self.predict(currentState)
+
+                if indexEpisode > 200:
+                    self.epsilon = 0.999 * self.epsilon
 
                 # here we step and return the state, reward, and boolean denoting if the state is a terminal state
                 (nextState, reward, terminalState, _) = self.env.step([action])
@@ -139,48 +142,29 @@ class DQN:
             print("Sum of rewards {}".format(np.sum(rewardsEpisode)))
             self.sumRewardsEpisode.append(np.sum(rewardsEpisode))
 
-    def predict(self, state, episode_index):
+    def predict(self, observation, state=None, episode_start=None, deterministic=False):
         """
-        This function selects an action on the basis of the current state
-        :param state: state for which to compute the action
-        :param episode_index:  index of the current episode
-        :return:
+        This function selects an action based on the current state
+        :param observation: current state for which to compute the action (list for vectorized envs)
+        :param state: (optional) used for stateful models like RNNs
+        :param episode_start: (optional) boolean indicating the start of an episode
+        :param deterministic: (optional) whether to use a deterministic policy
+        :return: action
         """
 
-        # first index episodes we select completely random actions to have enough exploration
-        # change this
-        if episode_index < 1:
-            return np.random.choice(self.actionDimension)
+        # we return the index where Qvalues[state,:] has the max value
+        # that is, since the index denotes an action, we select greedy actions
+        Qvalues = self.onlineNetwork.predict(observation.reshape(1, self.stateDimension))
 
-            # Returns a random real number in the half-open interval [0.0, 1.0)
-        # this number is used for the epsilon greedy approach
-        randomNumber = np.random.random()
-
-        # after index episodes, we slowly start to decrease the epsilon parameter
-        if episode_index > 200:
-            self.epsilon = 0.999 * self.epsilon
-
-        # if this condition is satisfied, we are exploring, that is, we select random actions
-        if randomNumber < self.epsilon:
-            # returns a random action selected from: 0,1,...,actionNumber-1
-            return np.random.choice(self.actionDimension)
-
-            # otherwise, we are selecting greedy actions
+        # If deterministic, choose the action with the highest Q-value, first index
+        if deterministic:
+            action = np.argmax(Qvalues[0, :])
         else:
-            # we return the index where Qvalues[state,:] has the max value
-            # that is, since the index denotes an action, we select greedy actions
+            # If not deterministic, handle the possibility of multiple max Q-values
+            action = np.random.choice(np.where(Qvalues[0, :] == np.max(Qvalues[0, :]))[0])
 
-            Qvalues = self.onlineNetwork.predict(state.reshape(1, self.stateDimension))
 
-            return np.random.choice(np.where(Qvalues[0, :] == np.max(Qvalues[0, :]))[0])
-            # here we need to return the minimum index since it can happen
-            # that there are several identical maximal entries, for example
-            # import numpy as np
-            # a=[0,1,1,0]
-            # np.where(a==np.max(a))
-            # this will return [1,2], but we only need a single index
-            # that is why we need to have np.random.choice(np.where(a==np.max(a))[0])
-            # note that zero has to be added here since np.where() returns a tuple
+        return action, state
 
     def trainNetwork(self):
         # if the replay buffer has at least batchReplayBufferSize elements,
