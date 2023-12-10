@@ -112,26 +112,23 @@ class DQN:
             # reset the environment at the beginning of every episode
             currentState: list = self.env.reset()  # fixme: for vectorized envs > 1 returns S of all envs
 
-            # here we step from one state to another
-            # this will loop until a terminal state is reached
             terminalState = False
             while not terminalState:
 
                 if indexEpisode < 1 or np.random.random() < self.epsilon:
-                    action = np.random.choice(self.actionDimension)
+                    actions = np.array([np.random.choice(self.actionDimension) for _ in range(len(currentState))])  # len(currentState) is the number of envs
                 else:  # greedy action
-                    # fixme: here action should be an array for vectorized envs
-                    action, _ = self.predict(currentState)
+                    actions, _ = self.predict(currentState)
 
                 if indexEpisode > 200:
                     self.epsilon = 0.999 * self.epsilon
 
                 # here we step and return the state, reward, and boolean denoting if the state is a terminal state
-                (nextState, reward, terminalState, _) = self.env.step([action])
+                (nextState, reward, terminalState, _) = self.env.step(actions)  # fixme: multiple envs
                 rewardsEpisode.append(reward)
 
                 # add current state, action, reward, next state, and terminal flag to the replay buffer
-                self.replayBuffer.append((currentState, action, reward, nextState, terminalState))
+                self.replayBuffer.append((currentState, actions, reward, nextState, terminalState))
 
                 # train network
                 self.trainNetwork()
@@ -142,10 +139,10 @@ class DQN:
             print("Sum of rewards {}".format(np.sum(rewardsEpisode)))
             self.sumRewardsEpisode.append(np.sum(rewardsEpisode))
 
-    def predict(self, observation, state=None, episode_start=None, deterministic=False):
+    def predict(self, observations: list[list], state=None, episode_start=None, deterministic=False):
         """
         This function selects an action based on the current state
-        :param observation: current state for which to compute the action (list for vectorized envs)
+        :param observations: current state for which to compute the action (list for vectorized envs)
         :param state: (optional) used for stateful models like RNNs
         :param episode_start: (optional) boolean indicating the start of an episode
         :param deterministic: (optional) whether to use a deterministic policy
@@ -154,17 +151,19 @@ class DQN:
 
         # we return the index where Qvalues[state,:] has the max value
         # that is, since the index denotes an action, we select greedy actions
-        Qvalues = self.onlineNetwork.predict(observation.reshape(1, self.stateDimension))
+        Qvalues = self.onlineNetwork.predict(np.array(observations))
 
-        # If deterministic, choose the action with the highest Q-value, first index
-        if deterministic:
-            action = np.argmax(Qvalues[0, :])
-        else:
-            # If not deterministic, handle the possibility of multiple max Q-values
-            action = np.random.choice(np.where(Qvalues[0, :] == np.max(Qvalues[0, :]))[0])
+        actions = np.zeros(len(observations), dtype=np.int32)
 
+        for i in range(len(observations)):
+            # If deterministic, choose the action with the highest Q-value, first index
+            if deterministic:
+                actions[i] = np.argmax(Qvalues[0, :])
+            else:
+                # If not deterministic, handle the possibility of multiple max Q-values
+                actions[i] = np.random.choice(np.where(Qvalues[0, :] == np.max(Qvalues[0, :]))[0])
 
-        return action, state
+        return actions, state
 
     def trainNetwork(self):
         # if the replay buffer has at least batchReplayBufferSize elements,
@@ -212,7 +211,7 @@ class DQN:
                     y = reward + self.gamma * np.max(QnextStateTargetNetwork[index])
 
                 # this is necessary for defining the cost function
-                self.actionsAppend.append(action)
+                self.actionsAppend.append(action[0])  # fixme: dirty hack, action is an array for vectorized envs
 
                 # this actually does not matter since we do not use all the entries in the cost function
                 outputNetwork[index] = QcurrentStateMainNetwork[index]
