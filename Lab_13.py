@@ -15,7 +15,7 @@ from stable_baselines3.common.evaluation import evaluate_policy
 from Lab_13_DQN import DQN
 
 # ref: https://xusophia.github.io/DataSciFinalProj/
-visualize = False
+visualize = True
 
 ##################################
 # UNDERSTAND THE ENVIRONMENT
@@ -23,7 +23,7 @@ visualize = False
 
 # https://www.gymlibrary.dev/environments/box2d/lunar_lander/
 # vectorized environment (a method for stacking multiple independent environments into a single environment) of 16 environments
-env = make_vec_env('LunarLander-v2', n_envs=1)
+env = make_vec_env('LunarLander-v2', n_envs=4)
 
 print("_____OBSERVATION SPACE_____ \n")
 print("Observation Space Shape", env.observation_space.shape)
@@ -56,11 +56,13 @@ model = DQN("MlpPolicy", env, 0.9, 0.1)
 ##################################
 
 # Let's train our DQN agent for 1,000,000 timesteps, don't forget to use GPU on Colab. It will take approximately ~20min, but you can use fewer timesteps if you just want to try it out.
-model.learn(total_timesteps=1)
+model.learn(total_timesteps=2)
 
 ##################################
 # EVALUATE THE MODEL
 ##################################
+print("EVALUATE THE MODEL")
+
 custom = True
 if custom:
     mean_reward, std_reward = evaluate_policy(model, model.env, n_eval_episodes=10)
@@ -79,6 +81,7 @@ else:
 ##################################
 
 if visualize:
+    print("VISUALIZE THE MODEL")
     vec_env = model.env
     obs = vec_env.reset()
     for i in range(1000):
@@ -86,3 +89,4 @@ if visualize:
         obs, rewards, dones, info = vec_env.step(action)
         vec_env.render("human")
 env.close()
+print("DONE")
