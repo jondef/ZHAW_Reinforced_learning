@@ -1,3 +1,4 @@
+import os
 import random
 from collections import deque
 
@@ -21,6 +22,7 @@ class DQN:
         self.gamma = gamma
         self.epsilon = epsilon
         self.min_epsilon = min_epsilon
+        self.model_name = "lab_13_trained_model_temp"
 
         self.stateDimension = 8
         self.actionDimension = 4
@@ -45,7 +47,15 @@ class DQN:
         # this sum is used to store the sum of rewards obtained during each training episode
         self.sumRewardsEpisode = []
 
-    def my_loss_fn(self, y_true, y_pred):
+    def save(self):
+        self.onlineNetwork.save(self.model_name)
+
+    def load(self):
+        if os.path.exists(self.model_name):
+            tf.keras.models.load_model(self.model_name,
+                                       custom_objects={'dqn_loss': self.dqn_loss} )
+
+    def dqn_loss(self, y_true, y_pred):
         """
         :param y_true: matrix of dimension (self.batchReplayBufferSize,2) - this is the target
         :param y_pred: matrix of dimension (self.batchReplayBufferSize,2) - this is predicted by the network

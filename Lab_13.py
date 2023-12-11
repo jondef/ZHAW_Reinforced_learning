@@ -27,7 +27,7 @@ def main():
 
     # https://www.gymlibrary.dev/environments/box2d/lunar_lander/
     # vectorized environment (a method for stacking multiple independent environments into a single environment) of 16 environments
-    env = make_vec_env('LunarLander-v2', n_envs=1, vec_env_cls=SubprocVecEnv, vec_env_kwargs=dict(start_method='fork'))
+    env = make_vec_env('LunarLander-v2', n_envs=4, vec_env_cls=SubprocVecEnv, vec_env_kwargs=dict(start_method='fork'))
 
     print("_____OBSERVATION SPACE_____ \n")
     print("Observation Space Shape", env.observation_space.shape)
@@ -54,14 +54,14 @@ def main():
                 )
 
     model = DQN("MlpPolicy", env, 0.99, 0.1)
+    model.load()
 
     ##################################
     # TRAIN THE MODEL
     ##################################
 
     # Let's train our DQN agent for 1,000,000 timesteps, don't forget to use GPU on Colab. It will take approximately ~20min, but you can use fewer timesteps if you just want to try it out.
-    # 10k time steps about 7 episodes
-    model.learn(total_timesteps=1_000)
+    model.learn(total_timesteps=2000)
 
     ##################################
     # EVALUATE THE MODEL
@@ -75,9 +75,7 @@ def main():
     print(f"{mean_reward:.2f} +/- {std_reward:.2f}")
 
     model.onlineNetwork.summary()
-    model.onlineNetwork.save("lab_13_trained_model_temp")
-    #model.onlineNetwork.load("lab_13_trained_model_temp")
-
+    model.save()
 
     ##################################
     # VISUALIZE THE MODEL
