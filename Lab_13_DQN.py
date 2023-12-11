@@ -158,9 +158,9 @@ class DQN:
             nextStateBatch[index, :] = tupleS[3]
 
         # here, use the target network to predict Q-values
-        QnextStateTargetNetwork = self.targetNetwork.predict(nextStateBatch)
+        QnextStateTargetNetwork = self.targetNetwork.predict(nextStateBatch, verbose=0)
         # here, use the main network to predict Q-values
-        QcurrentStateMainNetwork = self.onlineNetwork.predict(currentStateBatch)
+        QcurrentStateMainNetwork = self.onlineNetwork.predict(currentStateBatch, verbose=0)
 
         # now, we form batches for training
         # input for training
@@ -197,6 +197,5 @@ class DQN:
             # copy the weights to targetNetwork
             self.targetNetwork.set_weights(self.onlineNetwork.get_weights())
             print("Target network updated!")
-            print("Counter value {}".format(self.updateTargetNetworkCounter))
             # reset the counter
             self.updateTargetNetworkCounter = 0
