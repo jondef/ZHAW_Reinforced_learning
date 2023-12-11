@@ -7,7 +7,7 @@ from tensorflow.keras.layers import Dense
 from tensorflow.keras.losses import mean_squared_error
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.optimizers.legacy import RMSprop
-
+import tensorflow as tf
 
 class DQN:
 
@@ -54,21 +54,18 @@ class DQN:
                    with each entry being the squared error between the entries of y_true and y_pred
                    later on, the tensor flow will compute the scalar out of this vector (mean squared error)
         """
-        s1, s2 = y_true.shape
+        s1, s2 = tf.shape(y_true)[0], tf.shape(y_true)[1]
         print(f"y_true shape: {y_true.shape}")
 
-        # this matrix defines indices of a set of entries that we want to
-        # extract from y_true and y_pred
-        # s2=2
-        # s1=self.batchReplayBufferSize
-        indices = np.zeros(shape=(s1, 2))
-        indices[:, 0] = np.arange(s1)
-        indices[:, 1] = self.actionsAppend
+        # Create indices matrix using TensorFlow operations
+        indices = tf.stack([tf.range(s1), tf.cast(self.actionsAppend, dtype=tf.int32)], axis=1)
 
-        y_true_gathered = gather_nd(y_true, indices=indices.astype(int))
-        y_pred_gathered = gather_nd(y_pred, indices=indices.astype(int))
+        # Use tf.gather_nd to gather the required elements
+        y_true_gathered = tf.gather_nd(y_true, indices)
+        y_pred_gathered = tf.gather_nd(y_pred, indices)
 
-        loss = mean_squared_error(y_true_gathered, y_pred_gathered)
+        # Calculate mean squared error
+        loss = tf.keras.losses.mean_squared_error(y_true_gathered, y_pred_gathered)
         return loss
 
     def createNetwork(self):
