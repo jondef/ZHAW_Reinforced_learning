@@ -12,7 +12,7 @@ from tensorflow.keras.optimizers.legacy import RMSprop
 
 class DQN:
 
-    def __init__(self, env, gamma, epsilon):
+    def __init__(self, policy: str, env, gamma, epsilon):
         """
         :param env: stable baseline env
         :param gamma: discount factor
@@ -110,7 +110,7 @@ class DQN:
             print("Simulating episode {}".format(indexEpisode))
 
             # reset the environment at the beginning of every episode
-            currentState: list = self.env.reset()  # fixme: for vectorized envs > 1 returns S of all envs
+            currentState = self.env.reset()
 
             # here we step from one state to another
             # this will loop until a terminal state is reached
@@ -120,14 +120,13 @@ class DQN:
                 if indexEpisode < 1 or np.random.random() < self.epsilon:
                     action = np.random.choice(self.actionDimension)
                 else:  # greedy action
-                    # fixme: here action should be an array for vectorized envs
                     action, _ = self.predict(currentState)
 
                 if indexEpisode > 200:
                     self.epsilon = 0.999 * self.epsilon
 
                 # here we step and return the state, reward, and boolean denoting if the state is a terminal state
-                (nextState, reward, terminalState, _) = self.env.step([action])
+                (nextState, reward, terminalState, _, _) = self.env.step(action)
                 rewardsEpisode.append(reward)
 
                 # add current state, action, reward, next state, and terminal flag to the replay buffer
