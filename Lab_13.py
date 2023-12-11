@@ -27,7 +27,7 @@ def main():
 
     # https://www.gymlibrary.dev/environments/box2d/lunar_lander/
     # vectorized environment (a method for stacking multiple independent environments into a single environment) of 16 environments
-    env = make_vec_env('LunarLander-v2', n_envs=4, vec_env_cls=SubprocVecEnv, vec_env_kwargs=dict(start_method='fork'))
+    env = make_vec_env('LunarLander-v2', n_envs=1, vec_env_cls=SubprocVecEnv, vec_env_kwargs=dict(start_method='fork'))
 
     print("_____OBSERVATION SPACE_____ \n")
     print("Observation Space Shape", env.observation_space.shape)
@@ -76,6 +76,15 @@ def main():
 
     model.onlineNetwork.summary()
     model.onlineNetwork.save("lab_13_trained_model_temp")
+    #model.onlineNetwork.load("lab_13_trained_model_temp")
+
+
+    ##################################
+    # VISUALIZE THE MODEL
+    ##################################
+    print("VISUALIZE THE MODEL")
+
+    visualize = True
 
     # Plotting
     plt.figure(figsize=(10, 6))
@@ -84,29 +93,25 @@ def main():
     plt.xlabel('Episode')
     plt.ylabel('Total Reward')
     plt.grid(True)
-    plt.show()
+    if visualize: plt.show()
     plt.savefig('lab_13_sum_rewards_episode.png')
+    # create gif
+    frames = []
+    vec_env = model.env
+    obs = vec_env.reset()
+    for i in range(1000):
+        action, _states = model.predict(obs, deterministic=True)
+        obs, rewards, dones, info = vec_env.step(action)
+        if visualize: vec_env.render("human")
+        frames.append(Image.fromarray(vec_env.render()))
+    frames[0].save('lab_13_lunar_lander.gif', format='GIF', append_images=frames[1:], save_all=True, duration=100, loop=0)
 
-    ##################################
-    # VISUALIZE THE MODEL
-    ##################################
-    visualize = True
-
-    if visualize:
-        print("VISUALIZE THE MODEL")
-        frames = []
-        vec_env = model.env
-        obs = vec_env.reset()
-        for i in range(1000):
-            action, _states = model.predict(obs, deterministic=True)
-            obs, rewards, dones, info = vec_env.step(action)
-            vec_env.render("human")
-            frames.append(Image.fromarray(vec_env.render()))
-        # save the frames to disk
-        frames[0].save('lab_13_lunar_lander.gif', format='GIF', append_images=frames[1:], save_all=True, duration=100, loop=0)
     env.close()
     print("DONE")
 
 
 if __name__ == '__main__':
     main()
+
+
+
