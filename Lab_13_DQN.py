@@ -31,6 +31,7 @@ class DQN:
         self.trainingBatchSize = 256
 
         self.onlineNetwork = self.createNetwork()
+        self.load()
         self.targetNetwork = self.createNetwork()
         self.targetNetwork.set_weights(self.onlineNetwork.get_weights())
 
@@ -40,10 +41,6 @@ class DQN:
         # env step counter
         self.timestep_count = 0
 
-        # this list is used in the cost function to select certain entries of the
-        # predicted and true sample matrices in order to form the loss
-        self.actionsAppend = []
-
         # this sum is used to store the sum of rewards obtained during each training episode
         self.sumRewardsEpisode = []
 
@@ -52,17 +49,18 @@ class DQN:
 
     def load(self):
         if os.path.exists(self.model_name):
-            tf.keras.models.load_model(self.model_name,
-                                       custom_objects={'dqn_loss': self.dqn_loss} )
+            self.onlineNetwork = tf.keras.models.load_model(self.model_name,
+                                       custom_objects={'dqn_loss': self.dqn_loss})
+            print("Model loaded")
+
 
     def dqn_loss(self, y_true, y_pred):
         """
         :param y_true: matrix of dimension (self.batchReplayBufferSize,2) - this is the target
         :param y_pred: matrix of dimension (self.batchReplayBufferSize,2) - this is predicted by the network
-        :return: - loss -
+        :return: loss
         """
-        loss = tf.reduce_mean(tf.square(y_true - y_pred))
-        return loss
+        return tf.reduce_mean(tf.square(y_true - y_pred))
 
     def createNetwork(self):
         model = Sequential()
@@ -158,8 +156,6 @@ class DQN:
         # Only update the action that were taken (Q-value for other actions stays the same)
         QcurrentStateOnlineNetwork[np.arange(self.trainingBatchSize), actionBatch] = y
 
-        # Train the online network
-        self.actionsAppend = actionBatch  # for cost function
         self.onlineNetwork.fit(x=currentStateBatch, y=QcurrentStateOnlineNetwork, batch_size=self.trainingBatchSize, verbose=0, epochs=1)
 
         # after n steps, update the weights of the target network
