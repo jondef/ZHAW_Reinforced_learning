@@ -83,43 +83,12 @@ print(f"{mean_reward:.2f} +/- {std_reward:.2f}")
 ##################################
 # VISUALIZE THE MODEL
 ##################################
-if not visualize:
-    exit()
 
-
-def show_animation(frames):
-    fig, ax = plt.subplots(figsize=(10, 6))
-    patch = ax.imshow(frames[0])
-    plt.axis('off')
-
-    def animate(i):
-        patch.set_data(frames[i])
-
-    anim = animation.FuncAnimation(fig=fig, func=animate, frames=len(frames), interval=20)
-    plt.show(block=True)
-    return anim  # to prevent anim object from being garbage collected
-
-
-def get_frame():
-    frame = env.render()
-    return Image.fromarray(frame)
-
-
-for _ in range(100):
-    frames = []
-    env = gym.make('LunarLander-v2', render_mode='rgb_array')
-    observation = env.reset()[0]
-
-    for _ in range(1000):  # Run for 1000 steps or till the episode ends
-        frames.append(get_frame())
-        y = model.predict(observation, deterministic=True)[0]  # Get the action predicted by the agent
-        action = y
-        observation, _, done, _, _ = env.step(action)
-        if done:
-            env.reset()  # Reset the environment if the episode ends
-            break
-
-    env.close()
-    anim = show_animation(frames)
-
-
+if visualize:
+    vec_env = model.env
+    obs = vec_env.reset()
+    for i in range(1000):
+        action, _states = model.predict(obs, deterministic=True)
+        obs, rewards, dones, info = vec_env.step(action)
+        vec_env.render("human")
+env.close()
