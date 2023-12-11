@@ -132,10 +132,10 @@ class DQN:
         for i in range(len(observations)):
             # If deterministic, choose the action with the highest Q-value, first index
             if deterministic:
-                actions[i] = np.argmax(Qvalues[0, :])
+                actions[i] = np.argmax(Qvalues[i, :])
             else:
-                # If not deterministic, handle the possibility of multiple max Q-values
-                actions[i] = np.random.choice(np.where(Qvalues[0, :] == np.max(Qvalues[0, :]))[0])
+                # If not deterministic, randomly choose action with max Q-values
+                actions[i] = np.random.choice(np.where(Qvalues[i, :] == np.max(Qvalues[i, :]))[0])
 
         return actions, state
 
