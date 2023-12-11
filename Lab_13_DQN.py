@@ -11,7 +11,7 @@ import tensorflow as tf
 
 class DQN:
 
-    def __init__(self, policy: str, env, gamma, epsilon):
+    def __init__(self, policy: str, env, gamma, epsilon, min_epsilon=0.01):
         """
         :param env: stable baseline env
         :param gamma: discount factor
@@ -20,6 +20,7 @@ class DQN:
         self.env = env
         self.gamma = gamma
         self.epsilon = epsilon
+        self.min_epsilon = min_epsilon
 
         self.stateDimension = 8
         self.actionDimension = 4
@@ -78,34 +79,30 @@ class DQN:
         return model
 
     def learn(self, total_timesteps):
+        num_envs = len(self.env.reset())  # Assuming this returns a list of initial states for each env
 
         for episodeIndex in range(total_timesteps):
-
-            # list that stores rewards per episode - this is necessary for keeping track of convergence
-            episodeReward = []
-
-            print("Simulating episode {}".format(episodeIndex))
-
             currentState: list = self.env.reset()  # currentState for all envs
+            episodeDone = [False] * num_envs  # Initialize terminal states for all environments
+            episodeReward = []  # good for keeping track of convergence
 
-            terminalState = False
-            while not terminalState:
+            while not all(episodeDone): # exit once all envs are terminated
+                print(f"Episode: {episodeIndex}\tepisodeDone: {episodeDone}")
 
                 if episodeIndex < 1 or np.random.random() < self.epsilon:
-                    actions = np.array([np.random.choice(self.actionDimension) for _ in range(len(currentState))])  # len(currentState) is the number of envs
+                    actions = np.array([np.random.choice(self.actionDimension) for _ in range(num_envs)])
                 else:  # greedy action
                     actions, _ = self.predict(currentState)
 
-                if episodeIndex > 200:
-                    self.epsilon = 0.999 * self.epsilon
+                nextState, reward, terminalState, _ = self.env.step(actions)  # This is for all envs
 
-                (nextState, reward, terminalState, _) = self.env.step(actions)  # This is for all envs
-                terminalState = terminalState[0]
-                reward = reward[0]
-
-                episodeReward.append(reward)
-                # todo: add here all transitions for all envs???
-                self.replayBuffer.append((currentState[0], actions[0], reward, nextState[0], terminalState))
+                # add transitions from all envs to the replay buffer only if the env is not terminated
+                for i in range(num_envs):
+                    if not episodeDone[i]:  # Process only if the episode for this env isn't done
+                        self.replayBuffer.append((currentState[i], actions[i], reward[i], nextState[i], terminalState[i]))
+                        episodeReward.append(reward[i])
+                        if terminalState[i]:  # Mark episode as done for this env
+                            episodeDone[i] = True
 
                 # train network only if reply buffer has at least batchReplayBufferSize elements
                 if len(self.replayBuffer) > self.batchReplayBufferSize:
@@ -113,8 +110,12 @@ class DQN:
 
                 currentState = nextState
 
-            print("Sum of rewards {}".format(np.sum(episodeReward)))
-            self.sumRewardsEpisode.append(np.sum(episodeReward))
+            # epsilon decay after each episode
+            self.epsilon = max(self.epsilon * 0.999, self.min_epsilon)
+
+            total_reward = np.sum(episodeReward)
+            print(f"Sum of rewards {total_reward}")
+            self.sumRewardsEpisode.append(total_reward)
 
     def predict(self, observations: list[list], state=None, episode_start=None, deterministic=False):
         """
