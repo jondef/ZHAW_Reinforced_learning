@@ -33,8 +33,10 @@ class DQN:
         self.targetNetwork.set_weights(self.onlineNetwork.get_weights())
 
         # update targetNetwork after ... episodes
-        self.updateTargetNetworkPeriod = 100
-        self.updateTargetNetworkCounter = 0
+        self.updateTargetNetworkPeriod = 100  # needs to be a multiple of num_envs
+
+        # env step counter
+        self.timestep_count = 0
 
         # this list is used in the cost function to select certain entries of the
         # predicted and true sample matrices in order to form the loss
@@ -80,17 +82,17 @@ class DQN:
 
     def learn(self, total_timesteps):
         num_envs = len(self.env.reset())  # Assuming this returns a list of initial states for each env
-        timestep_count = 0  # Initialize timestep counter
+        self.timestep_count = 0  # Initialize timestep counter
         episodeIndex = 0
 
         # Episode loop
-        while timestep_count < total_timesteps:
+        while self.timestep_count < total_timesteps:
             currentState: list = self.env.reset()  # currentState for all envs
             episodeDone = [False] * num_envs  # Initialize terminal states for all environments
             episodeReward = []  # good for keeping track of convergence
 
-            while not all(episodeDone) and timestep_count < total_timesteps: # exit once all envs are terminated
-                print(f"Episode: {episodeIndex}\ttimesteps: {timestep_count}\tepisodeDone: {episodeDone}")
+            while not all(episodeDone) and self.timestep_count < total_timesteps: # exit once all envs are terminated
+                print(f"Episode: {episodeIndex}\ttimesteps: {self.timestep_count}\tepisodeDone: {episodeDone}")
 
                 if np.random.random() < self.epsilon:
                     actions = np.array([np.random.choice(self.actionDimension) for _ in range(num_envs)])
@@ -98,7 +100,7 @@ class DQN:
                     actions, _ = self.predict(currentState)
 
                 nextState, reward, terminalState, _ = self.env.step(actions)  # This is for all envs
-                timestep_count += num_envs  # Increment timestep count by the number of environments
+                self.timestep_count += num_envs  # Increment timestep count by the number of environments
 
                 # add transitions from all envs to the replay buffer only if the env is not terminated
                 for i in range(num_envs):
@@ -131,7 +133,7 @@ class DQN:
         :param deterministic: (optional) whether to use a deterministic policy
         :return: action
         """
-        Qvalues = self.onlineNetwork.predict(np.array(observations), verbose=0)
+        Qvalues = self.onlineNetwork.predict(observations, verbose=0)
 
         actions = np.zeros(len(observations), dtype=np.int32)
 
@@ -145,31 +147,40 @@ class DQN:
 
         return actions, state
 
+    def trainNetworkk(self):
+        # Sample a batch from the replay buffer
+        randomSampleBatch = random.sample(self.replayBuffer, self.trainingBatchSize)
+
+        # Extract components from the sample batch using vectorized operations
+        currentStateBatch, actionBatch, rewardBatch, nextStateBatch, terminatedBatch = map(
+            np.array, zip(*randomSampleBatch))
+
+        QnextStateTargetNetwork = self.targetNetwork.predict(nextStateBatch, verbose=0)
+        QcurrentStateMainNetwork = self.onlineNetwork.predict(currentStateBatch, verbose=0)
+
+        # Compute target Q-value (y)
+        maxQnextState = np.max(QnextStateTargetNetwork, axis=1)
+        y = rewardBatch + self.gamma * maxQnextState * (~terminatedBatch)
+
+        # Prepare output for training
+        QcurrentStateMainNetwork[np.arange(self.trainingBatchSize), actionBatch] = y
+
+        # Train the online network
+        self.onlineNetwork.fit(x=currentStateBatch, y=QcurrentStateMainNetwork, batch_size=self.trainingBatchSize, verbose=0, epochs=1)
+
+
     def trainNetwork(self):
         # sample a batch from the replay buffer
         randomSampleBatch = random.sample(self.replayBuffer, self.trainingBatchSize)
 
-        # here we form current state batch
-        # and next state batch
-        # they are used as inputs for prediction
-        currentStateBatch = np.zeros(shape=(self.trainingBatchSize, self.stateDimension))
-        nextStateBatch = np.zeros(shape=(self.trainingBatchSize, self.stateDimension))
-        # this will enumerate the tuple entries of the randomSampleBatch
-        # index will loop through the number of tuples
-        for index, tupleS in enumerate(randomSampleBatch):
-            # first entry of the tuple is the current state
-            currentStateBatch[index, :] = tupleS[0]
-            # fourth entry of the tuple is the next state
-            nextStateBatch[index, :] = tupleS[3]
+        # Extract components from the sample batch using vectorized operations
+        currentStateBatch, actionBatch, rewardBatch, nextStateBatch, terminatedBatch = map(np.array, zip(*randomSampleBatch))
 
-        # here, use the target network to predict Q-values
-        QnextStateTargetNetwork = self.targetNetwork.predict(nextStateBatch, verbose=0)
-        # here, use the main network to predict Q-values
+        # predict Q-values using networks
         QcurrentStateOnlineNetwork = self.onlineNetwork.predict(currentStateBatch, verbose=0)
+        QnextStateTargetNetwork = self.targetNetwork.predict(nextStateBatch, verbose=0)
 
-        # now, we form batches for training
-        # input for training
-        inputNetwork = currentStateBatch
+
         # output for training
         outputNetwork = np.zeros(shape=(self.trainingBatchSize, self.actionDimension))
 
@@ -191,12 +202,9 @@ class DQN:
             # this is what matters
             outputNetwork[index, action] = y
 
-
-        self.onlineNetwork.fit(inputNetwork, outputNetwork, batch_size=self.trainingBatchSize, verbose=0, epochs=100)
+        self.onlineNetwork.fit(x=currentStateBatch, y=outputNetwork, batch_size=self.trainingBatchSize, verbose=0, epochs=1)
 
         # after n steps, update the weights of the target network
-        self.updateTargetNetworkCounter += 1
-        if (self.updateTargetNetworkCounter > (self.updateTargetNetworkPeriod - 1)):
+        if self.timestep_count % self.updateTargetNetworkPeriod == 0:
             self.targetNetwork.set_weights(self.onlineNetwork.get_weights())
-            self.updateTargetNetworkCounter = 0
             print("Target network updated!")
