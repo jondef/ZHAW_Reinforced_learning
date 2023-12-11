@@ -47,28 +47,11 @@ class DQN:
 
     def my_loss_fn(self, y_true, y_pred):
         """
-        This function will select certain row entries from y_true and y_pred to form the output
-        the selection is performed on the basis of the action indices in the list  self.actionsAppend
-        this function is used in createNetwork(self) to create the network
-
         :param y_true: matrix of dimension (self.batchReplayBufferSize,2) - this is the target
         :param y_pred: matrix of dimension (self.batchReplayBufferSize,2) - this is predicted by the network
-        :return: - loss - watch out here, this is a vector of (self.batchReplayBufferSize,1),
-                   with each entry being the squared error between the entries of y_true and y_pred
-                   later on, the tensor flow will compute the scalar out of this vector (mean squared error)
+        :return: - loss -
         """
-        s1, s2 = tf.shape(y_true)[0], tf.shape(y_true)[1]
-        print(f"y_true shape: {y_true.shape}")
-
-        # Create indices matrix using TensorFlow operations
-        indices = tf.stack([tf.range(s1), tf.cast(self.actionsAppend, dtype=tf.int32)], axis=1)
-
-        # Use tf.gather_nd to gather the required elements
-        y_true_gathered = tf.gather_nd(y_true, indices)
-        y_pred_gathered = tf.gather_nd(y_pred, indices)
-
-        # Calculate mean squared error
-        loss = tf.keras.losses.mean_squared_error(y_true_gathered, y_pred_gathered)
+        loss = tf.reduce_mean(tf.square(y_true - y_pred))
         return loss
 
     def createNetwork(self):
@@ -77,7 +60,7 @@ class DQN:
         model.add(Dense(56, activation='relu'))
         model.add(Dense(self.actionDimension, activation='linear'))
         # compile the network with the custom loss defined in my_loss_fn
-        model.compile(optimizer=RMSprop(), loss=self.my_loss_fn)
+        model.compile(optimizer=RMSprop(), loss=self.dqn_loss)
         return model
 
     def learn(self, total_timesteps):
@@ -147,28 +130,6 @@ class DQN:
 
         return actions, state
 
-    def trainNetworkk(self):
-        # Sample a batch from the replay buffer
-        randomSampleBatch = random.sample(self.replayBuffer, self.trainingBatchSize)
-
-        # Extract components from the sample batch using vectorized operations
-        currentStateBatch, actionBatch, rewardBatch, nextStateBatch, terminatedBatch = map(
-            np.array, zip(*randomSampleBatch))
-
-        QnextStateTargetNetwork = self.targetNetwork.predict(nextStateBatch, verbose=0)
-        QcurrentStateMainNetwork = self.onlineNetwork.predict(currentStateBatch, verbose=0)
-
-        # Compute target Q-value (y)
-        maxQnextState = np.max(QnextStateTargetNetwork, axis=1)
-        y = rewardBatch + self.gamma * maxQnextState * (~terminatedBatch)
-
-        # Prepare output for training
-        QcurrentStateMainNetwork[np.arange(self.trainingBatchSize), actionBatch] = y
-
-        # Train the online network
-        self.onlineNetwork.fit(x=currentStateBatch, y=QcurrentStateMainNetwork, batch_size=self.trainingBatchSize, verbose=0, epochs=1)
-
-
     def trainNetwork(self):
         # sample a batch from the replay buffer
         randomSampleBatch = random.sample(self.replayBuffer, self.trainingBatchSize)
@@ -180,29 +141,16 @@ class DQN:
         QcurrentStateOnlineNetwork = self.onlineNetwork.predict(currentStateBatch, verbose=0)
         QnextStateTargetNetwork = self.targetNetwork.predict(nextStateBatch, verbose=0)
 
+        # Compute target Q-value (y)
+        maxQnextState = np.max(QnextStateTargetNetwork, axis=1)  # get highest action value for each sample in the batch
+        y = rewardBatch + self.gamma * maxQnextState * (~terminatedBatch)
 
-        # output for training
-        outputNetwork = np.zeros(shape=(self.trainingBatchSize, self.actionDimension))
+        # Only update the action that were taken (Q-value for other actions stays the same)
+        QcurrentStateOnlineNetwork[np.arange(self.trainingBatchSize), actionBatch] = y
 
-        # this list will contain the actions that are selected from the batch
-        # this list is used in my_loss_fn to define the loss-function
-        self.actionsAppend = []
-        for index, (currentState, action, reward, nextState, terminated) in enumerate(randomSampleBatch):
-
-            if terminated:  # if the next state is the terminal state
-                y = reward
-            else:
-                y = reward + self.gamma * np.max(QnextStateTargetNetwork[index])
-
-            # this is necessary for defining the cost function
-            self.actionsAppend.append(action)
-
-            # this actually does not matter since we do not use all the entries in the cost function
-            outputNetwork[index] = QcurrentStateOnlineNetwork[index]
-            # this is what matters
-            outputNetwork[index, action] = y
-
-        self.onlineNetwork.fit(x=currentStateBatch, y=outputNetwork, batch_size=self.trainingBatchSize, verbose=0, epochs=1)
+        # Train the online network
+        self.actionsAppend = actionBatch  # for cost function
+        self.onlineNetwork.fit(x=currentStateBatch, y=QcurrentStateOnlineNetwork, batch_size=self.trainingBatchSize, verbose=0, epochs=1)
 
         # after n steps, update the weights of the target network
         if self.timestep_count % self.updateTargetNetworkPeriod == 0:
