@@ -24,9 +24,8 @@ class DQN:
         self.stateDimension = 8
         self.actionDimension = 4
 
-        self.replayBufferMaxSize = 300
+        self.replayBuffer = deque(maxlen=300)  # max size of the replay buffer
         self.batchReplayBufferSize = 100
-        self.replayBuffer = deque(maxlen=self.replayBufferMaxSize)
 
         self.onlineNetwork = self.createNetwork()
         self.targetNetwork = self.createNetwork()
