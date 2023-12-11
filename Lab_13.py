@@ -8,21 +8,14 @@
 !export PATH=$PATH:/opt/X11/bin
 """
 
-import gymnasium as gym
-
-from PIL import Image
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.common.monitor import Monitor
-from sys import exit
+
 from Lab_13_DQN import DQN
 
 # ref: https://xusophia.github.io/DataSciFinalProj/
-visualize = True
+visualize = False
 
 ##################################
 # UNDERSTAND THE ENVIRONMENT
@@ -34,12 +27,11 @@ env = make_vec_env('LunarLander-v2', n_envs=1)
 
 print("_____OBSERVATION SPACE_____ \n")
 print("Observation Space Shape", env.observation_space.shape)
-print("Sample observation", env.observation_space.sample()) # Get a random observation
+print("Sample observation", env.observation_space.sample())  # Get a random observation
 
 print("\n _____ACTION SPACE_____ \n")
 print("Action Space Shape", env.action_space.n)
-print("Action Space Sample", env.action_space.sample()) # Take a random action
-
+print("Action Space Sample", env.action_space.sample())  # Take a random action
 
 ##################################
 # CREATE THE MODEL
@@ -57,8 +49,7 @@ model = PPO("MlpPolicy", env, verbose=1,
             batch_size=64
             )
 
-model = DQN("MlpPolicy", env,0.9,0.1)
-
+model = DQN("MlpPolicy", env, 0.9, 0.1)
 
 ##################################
 # TRAIN THE MODEL
@@ -67,21 +58,16 @@ model = DQN("MlpPolicy", env,0.9,0.1)
 # Let's train our DQN agent for 1,000,000 timesteps, don't forget to use GPU on Colab. It will take approximately ~20min, but you can use fewer timesteps if you just want to try it out.
 model.learn(total_timesteps=1)
 
-
 ##################################
 # EVALUATE THE MODEL
 ##################################
 custom = True
 if custom:
-    # Create a new environment for evaluation
-    #eval_env = make_vec_env('LunarLander-v2', n_envs=1)
-
     mean_reward, std_reward = evaluate_policy(model, model.env, n_eval_episodes=10)
 
-    # Print the results
+    print("RESULTS:")
     print(f"{mean_reward:.2f} +/- {std_reward:.2f}")
     # An episode is considered successful if the agent scores more than 200 points.
-
 else:
     # get the obtained rewards in every episode
     model.sumRewardsEpisode
