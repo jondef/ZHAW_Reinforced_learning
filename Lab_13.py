@@ -7,13 +7,15 @@
 !brew install --cask xquartz
 !export PATH=$PATH:/opt/X11/bin
 """
-import gymnasium as gym
+from PIL import Image
+from matplotlib import pyplot as plt
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.evaluation import evaluate_policy
+from stable_baselines3.common.vec_env import SubprocVecEnv
 
 from Lab_13_DQN import DQN
+
 
 # ref: https://xusophia.github.io/DataSciFinalProj/
 
@@ -51,32 +53,39 @@ def main():
                 batch_size=64
                 )
 
-    model = DQN("MlpPolicy", env, 0.9, 0.1)
+    model = DQN("MlpPolicy", env, 0.99, 0.1)
 
     ##################################
     # TRAIN THE MODEL
     ##################################
 
     # Let's train our DQN agent for 1,000,000 timesteps, don't forget to use GPU on Colab. It will take approximately ~20min, but you can use fewer timesteps if you just want to try it out.
-    model.learn(total_timesteps=100)
+    # 10k time steps about 7 episodes
+    model.learn(total_timesteps=1_000)
 
     ##################################
     # EVALUATE THE MODEL
     ##################################
     print("EVALUATE THE MODEL")
 
-    custom = True
-    if custom:
-        mean_reward, std_reward = evaluate_policy(model, model.env, n_eval_episodes=10)
+    mean_reward, std_reward = evaluate_policy(model, model.env, n_eval_episodes=10)
 
-        print("RESULTS:")
-        print(f"{mean_reward:.2f} +/- {std_reward:.2f}")
-        # An episode is considered successful if the agent scores more than 200 points.
-    else:
-        # get the obtained rewards in every episode
-        model.sumRewardsEpisode
-        model.onlineNetwork.summary()
-        model.onlineNetwork.save("trained_model_temp")
+    print("RESULTS:")
+    print("An episode is considered successful if the agent scores more than 200 points.")
+    print(f"{mean_reward:.2f} +/- {std_reward:.2f}")
+
+    model.onlineNetwork.summary()
+    model.onlineNetwork.save("lab_13_trained_model_temp")
+
+    # Plotting
+    plt.figure(figsize=(10, 6))
+    plt.plot(model.sumRewardsEpisode, marker='o')
+    plt.title('Sum of Rewards per Episode')
+    plt.xlabel('Episode')
+    plt.ylabel('Total Reward')
+    plt.grid(True)
+    plt.show()
+    plt.savefig('lab_13_sum_rewards_episode.png')
 
     ##################################
     # VISUALIZE THE MODEL
@@ -85,15 +94,18 @@ def main():
 
     if visualize:
         print("VISUALIZE THE MODEL")
+        frames = []
         vec_env = model.env
         obs = vec_env.reset()
         for i in range(1000):
             action, _states = model.predict(obs, deterministic=True)
             obs, rewards, dones, info = vec_env.step(action)
             vec_env.render("human")
+            frames.append(Image.fromarray(vec_env.render()))
+        # save the frames to disk
+        frames[0].save('lab_13_lunar_lander.gif', format='GIF', append_images=frames[1:], save_all=True, duration=100, loop=0)
     env.close()
     print("DONE")
-
 
 
 if __name__ == '__main__':
